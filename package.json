@@ -1,0 +1,39 @@
+{
+  "name": "qa-bot",
+  "version": "1.0.0",
+  "description": "Full-stack AI-powered QA Bot application",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "keywords": ["AI", "QA", "LangChain", "OpenAI", "TypeScript"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@langchain/community": "^0.0.13",
+    "@langchain/core": "^0.1.26",
+    "@langchain/openai": "^0.0.10",
+    "@langchain/anthropic": "^0.0.7",
+    "@langchain/groq": "^0.0.1",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "zod": "^3.22.4",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vitest": "^1.1.0",
+    "supertest": "^6.3.3",
+    "@types/supertest": "^2.0.12"
+  }
+}
