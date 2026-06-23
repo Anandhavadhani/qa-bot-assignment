@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>QA Bot</title>
+    <style>
+      :root{--bg:#fbfbfb;--card:#fff;--muted:#6b7280;--accent:#2563eb}
+      html,body{height:100%}
+      body{font-family:system-ui,Segoe UI,Helvetica,Arial;max-width:900px;margin:2rem auto;padding:1rem;background:var(--bg);color:#111}
+      h1{margin-bottom:0.25rem}
+      .card{background:var(--card);border-radius:8px;padding:1rem;margin:1rem 0;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+      label{display:block;margin-top:0.75rem;font-weight:600}
+      input[type="text"], input, textarea, select{width:100%;padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;margin-top:0.25rem}
+      textarea{height:160px;font-family:inherit}
+      .row{display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem}
+      button{background:var(--accent);color:white;border:none;padding:0.5rem 0.75rem;border-radius:6px;cursor:pointer}
+      button[disabled]{opacity:0.6;cursor:default}
+      button.secondary{background:#6b7280}
+      .muted{color:var(--muted);margin-left:0.5rem}
+      .result{margin-top:0.75rem}
+      pre{background:#0f172a;color:#e6eef8;padding:0.75rem;border-radius:6px;overflow:auto;white-space:pre-wrap}
+      .error{color:#b91c1c;font-weight:600}
+    </style>
+  </head>
+  <body>
+    <h1>QA Bot — Demo</h1>
+    <section class="card">
+      <h2>Quick Document Query</h2>
+      <label>Question</label>
+      <input id="q" />
+
+      <label>Prompt Type</label>
+      <select id="promptType">
+        <option value="default">default</option>
+        <option value="detailed">detailed</option>
+        <option value="concise">concise</option>
+        <option value="technical">technical</option>
+      </select>
+
+      <label>Document Text</label>
+      <textarea id="doc" placeholder="Paste document text here (or leave empty to use a documentPath)"></textarea>
+
+      <div class="row">
+        <button id="ask">Ask</button>
+        <button id="clear">Clear</button>
+        <span id="status" class="muted"></span>
+      </div>
+
+      <div class="result">
+        <h3>Result</h3>
+        <pre id="out">(No query yet)</pre>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Upload Files</h2>
+      <input id="files" type="file" multiple />
+
+      <label>Question</label>
+      <input id="q2" />
+
+      <label>Prompt Type</label>
+      <select id="promptType2">
+        <option value="default">default</option>
+        <option value="detailed">detailed</option>
+        <option value="concise">concise</option>
+        <option value="technical">technical</option>
+      </select>
+
+      <div class="row">
+        <button id="upload">Upload & Ask</button>
+        <button id="clear2">Clear</button>
+        <span id="status2" class="muted"></span>
+      </div>
+
+      <div class="result">
+        <h3>Result</h3>
+        <pre id="out2">(No upload yet)</pre>
+      </div>
+    </section>
+
+    <script>
+      function setStatus(id, text, isError=false){
+        const el = document.getElementById(id);
+        el.textContent = text || '';
+        el.className = isError ? 'error' : 'muted';
+      }
+
+      async function postJson(url, body){
+        try{
+          const res = await fetch(url, {method:'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(body)});
+          const j = await res.json().catch(()=>({message:'Invalid JSON in response'}));
+          if(!res.ok) throw new Error(j?.message || JSON.stringify(j));
+          return j;
+        }catch(err){
+          throw err;
+        }
+      }
+
+      document.getElementById('ask').addEventListener('click', async ()=>{
+        const question = document.getElementById('q').value.trim();
+        const documentText = document.getElementById('doc').value;
+        const promptType = document.getElementById('promptType').value;
+        const out = document.getElementById('out');
+        setStatus('status','Running...');
+        out.textContent = '';
+
+        if(!question){ setStatus('status','Question is required', true); return }
+
+        try{
+          const j = await postJson('/search/document', { question, documentText, promptType });
+          out.textContent = JSON.stringify(j, null, 2);
+          setStatus('status','Done');
+        }catch(e){
+          out.textContent = JSON.stringify({ error: String(e) }, null, 2);
+          setStatus('status','Error: see result', true);
+        }
+      });
+
+      document.getElementById('upload').addEventListener('click', async ()=>{
+        const files = document.getElementById('files').files;
+        const question = document.getElementById('q2').value.trim();
+        const promptType = document.getElementById('promptType2').value;
+        const out2 = document.getElementById('out2');
+        setStatus('status2','Uploading...');
+        out2.textContent = '';
+
+        if(!question){ setStatus('status2','Question is required', true); return }
+        if(!files || files.length===0){ setStatus('status2','Please select at least one file', true); return }
+
+        try{
+          const fd = new FormData();
+          for(const f of files) fd.append('files', f);
+          fd.append('question', question);
+          fd.append('promptType', promptType);
+
+          const res = await fetch('/search/upload', { method: 'POST', body: fd });
+          const j = await res.json().catch(()=>({message:'Invalid JSON in response'}));
+          if(!res.ok) throw new Error(j?.message || JSON.stringify(j));
+          out2.textContent = JSON.stringify(j, null, 2);
+          setStatus('status2','Done');
+        }catch(e){
+          out2.textContent = JSON.stringify({ error: String(e) }, null, 2);
+          setStatus('status2','Error: see result', true);
+        }
+      });
+
+      document.getElementById('clear').addEventListener('click', ()=>{
+        document.getElementById('q').value='';
+        document.getElementById('doc').value='';
+        document.getElementById('out').textContent='(No query yet)';
+        setStatus('status','');
+      });
+
+      document.getElementById('clear2').addEventListener('click', ()=>{
+        document.getElementById('q2').value='';
+        document.getElementById('files').value='';
+        document.getElementById('out2').textContent='(No upload yet)';
+        setStatus('status2','');
+      });
+    </script>
+  </body>
+</html>
